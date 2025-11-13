@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Organizador de laudos de ultrassom</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    :root {
+      --primary: #34495e;
+      --accent: #4a90e2;
+      --accent-dark: #357ABD;
+      --light: #f9fafb;
+      --gray-light: #dce3e8;
+      --gray-medium: #a0aabb;
+      --gray-dark: #667788;
+      --error: #e74c3c;
+      --border-radius: 12px;
+      --transition: 0.3s ease;
+      --font-base: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      --button-height: 42px;
+      --input-height: 44px;
+      --gap: 16px;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: var(--font-base);
+      background: var(--light);
+      padding: 24px 20px;
+      max-width: 820px;
+      margin: 0 auto;
+      color: var(--primary);
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.5;
+    }
+    h2 {
+      text-align: center;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 1.9rem;
+      margin-bottom: 30px;
+      margin-top: 0px;
+      user-select: text;
+    }
+    label {
+      font-weight: 600;
+      color: var(--gray-dark);
+      display: block;
+      margin-bottom: 6px;
+      user-select: text;
+      font-size: 1rem;
+    }
+    input[type="text"],
+    select {
+      width: 100%;
+      height: var(--input-height);
+      padding: 0 16px;
+      font-size: 1rem;
+      border: 1.8px solid var(--gray-light);
+      border-radius: var(--border-radius);
+      background: white;
+      color: var(--primary);
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline-offset: 2px;
+      outline-color: transparent;
+      font-style: normal;
+      user-select: text;
+      font-weight: 400;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      cursor: text;
+    }
+    input[type="text"]::placeholder {
+      font-style: italic;
+      color: var(--gray-medium);
+    }
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      outline-color: var(--accent);
+    }
+    button {
+      margin-top: 10px;
+      width: 100%;
+      height: var(--button-height);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: white;
+      background-color: var(--accent);
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      box-shadow: 0 3px 6px rgba(70,130,180,0.35);
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      user-select: none;
+    }
+    button:hover,
+    button:focus {
+      background-color: var(--accent-dark);
+      box-shadow: 0 6px 12px rgba(70,130,180,0.6);
+      outline: none;
+    }
+    #preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--gap);
+      margin-top: 25px;
+      justify-content: center;
+      user-select: none;
+    }
+    .thumb-wrapper {
+      position: relative;
+      width: 160px;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      background: white;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      cursor: grab;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .thumb-wrapper:hover,
+    .thumb-wrapper:focus-within {
+      transform: scale(1.05);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.18);
+      z-index: 10;
+    }
+    .thumb {
+      width: 100%;
+      height: 110px;
+      object-fit: contain;
+      user-select: none;
+      pointer-events: none;
+      border-bottom: 1px solid var(--gray-light);
+      border-radius: 14px 14px 0 0;
+      background-color: #fafafa;
+    }
+    .pdf-thumb {
+      width: 100%;
+      height: 110px;
+      background: #f0f4f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: var(--gray-dark);
+      border-bottom: 1px solid var(--gray-light);
+      border-radius: 14px 14px 0 0;
+      user-select: none;
+      padding: 0 6px;
+      text-align: center;
+      word-break: break-word;
+      line-height: 1.2;
+      cursor: default;
+    }
+    .remove-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--error);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      font-size: 18px;
+      line-height: 26px;
+      text-align: center;
+      cursor: pointer;
+      padding: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+    .remove-btn:hover,
+    .remove-btn:focus {
+      background: #c0392b;
+      outline: none;
+    }
+    .dragging {
+      opacity: 0.4;
+      cursor: grabbing;
+    }
+    #options {
+      margin: 28px 0 32px;
+      font-weight: 600;
+      color: var(--gray-dark);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      user-select: text;
+      font-size: 1rem;
+      cursor: default;
+    }
+    #options input[type="checkbox"],
+    input[type="checkbox"] {
+      transform: scale(1.3);
+      cursor: default;
+      margin: 0;
+    }
+    #options label,
+    label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 0;
+      user-select: none;
+    }
+    #layout, #modeSelector {
+      margin-top: 10px;
+      margin-bottom: var(--gap);
+      cursor: default;
+    }
+    #singleMode, #multiMode {
+      margin-top: 10px;
+      user-select: text;
+    }
+    #progress-container {
+      background-color: #ddd;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 15px;
+      height: 10px;
+      display: none;
+      user-select: none;
+      box-shadow: inset 0 0 6px rgba(0,0,0,0.1);
+    }
+    #progress-bar {
+      width: 0%;
+      height: 100%;
+      background-color: var(--accent);
+      border-radius: 6px;
+      transition: width 0.4s ease;
+    }
+    input::placeholder {
+      font-style: italic;
+      color: var(--gray-medium);
+      user-select: none;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 20px 12px;
+      }
+      #preview {
+        justify-content: center;
+      }
+      .thumb-wrapper {
+        width: 140px;
+      }
+      .thumb, .pdf-thumb {
+        height: 95px;
+      }
+      button {
+        font-size: 1rem;
+        height: 38px;
+      }
+      #layout, #modeSelector {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Organizador de laudos de ultrassom</h2>
+
+  <label for="titleInput">Título (opcional):</label>
+  <input type="text" id="titleInput" placeholder="Digite o título aqui">
+  <label style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+    <input type="checkbox" id="includePatientName">
+    Incluir nome do paciente no título
+  </label>
+
+  <label for="layout" style="margin-top:15px;">Disposição das imagens:</label>
+  <select id="layout">
+    <option value="auto" selected>Automático</option>    
+    <option value="2x3">2 colunas x 3 linhas</option>
+    <option value="2x4">2 colunas x 4 linhas</option>
+    <option value="1x2">1 coluna x 2 linhas (imagens maiores)</option>
+    
+  </select>
+
+  <label for="modeSelector">Modo de uso:</label>
+  <select id="modeSelector">
+    <option value="single" selected>Modo único (selecionar imagens)</option>
+    <option value="multi">Modo múltiplas pastas (PDF por pasta em ZIP)</option>
+  </select>
+
+  <div id="singleMode">
+    <label for="imageUpload">Selecione as imagens:</label>
+    <input type="file" id="imageUpload" multiple accept="image/*">
+
+    <label for="pdfUpload" style="margin-top:10px; margin-bottom:10px;">Selecione um ou mais laudos PDF (opcional):</label>
+    <input type="file" id="pdfUpload" multiple accept="application/pdf">
+
+    <div id="preview"></div>
+  </div>
+
+  <div id="multiMode" style="display:none;">
+    <label for="multiUpload" style="font-weight:bold; margin-bottom:10px; display:block;">
+      Selecione uma ou mais pastas (somente imagens dentro delas):
+    </label>
+    <input type="file" id="multiUpload" webkitdirectory directory multiple accept="image/*,.pdf">
+  </div>
+
+  <div id="progress-container">
+    <div id="progress-bar"></div>
+  </div>
+
+  <div id="options" style="margin-top:10px; margin-bottom:10px;">
+    <label>
+      <input type="checkbox" id="compressImages" checked>
+      Ativar compressão e redimensionamento (máx. 1080px de largura)
+    </label>
+    <label id="mergePdfsLabel" style="display:none;">
+      <input type="checkbox" id="mergePdfs">
+      Unir todos os PDFs em um único arquivo
+    </label>
+  </div>
+
+  <button onclick="handleGenerate()">Gerar Arquivo(s)</button>
+
+  <script>
+    const { jsPDF } = window.jspdf;
+    const { PDFDocument } = PDFLib;
+
+    let imageDataArray = [];
+    let pdfDataArray = [];
+    let dragUsed = false;
+
+    const modeSelector = document.getElementById("modeSelector");
+    const singleModeDiv = document.getElementById("singleMode");
+    const multiModeDiv = document.getElementById("multiMode");
+
+    const imageUpload = document.getElementById("imageUpload");
+    const pdfUpload = document.getElementById("pdfUpload");
+    const multiUpload = document.getElementById("multiUpload");
+    const preview = document.getElementById("preview");
+
+    modeSelector.addEventListener("change", () => {
+      dragUsed = false;
+      preview.innerHTML = "";
+      imageDataArray = [];
+      pdfDataArray = [];
+      imageUpload.value = "";
+      pdfUpload.value = "";
+      multiUpload.value = "";
+      hideProgress();
+
+      const mergePdfsLabel = document.getElementById("mergePdfsLabel");
+      const mergePdfsCheckbox = document.getElementById("mergePdfs");
+
+      if (modeSelector.value === "single") {
+        singleModeDiv.style.display = "block";
+        multiModeDiv.style.display = "none";
+        mergePdfsLabel.style.display = "none";
+        mergePdfsCheckbox.checked = false;
+      } else {
+        singleModeDiv.style.display = "none";
+        multiModeDiv.style.display = "block";
+        mergePdfsLabel.style.display = "flex";
+        mergePdfsCheckbox.checked = false;
+      }
+    });
+
+    imageUpload.addEventListener("change", handleImageUpload);
+    pdfUpload.addEventListener("change", handlePdfUpload);
+
+    function handleImageUpload(event) {
+      const files = Array.from(event.target.files);
+      preview.innerHTML = "";
+      imageDataArray = [];
+      pdfDataArray = [];
+      dragUsed = false;
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const imgData = e.target.result;
+
+          const wrapper = document.createElement("div");
+          wrapper.className = "thumb-wrapper";
+          wrapper.dataset.type = "image";
+
+          const img = document.createElement("img");
+          img.src = imgData;
+          img.className = "thumb";
+          img.setAttribute("draggable", true);
+          img.alt = file.name;
+
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.className = "remove-btn";
+          removeBtn.onclick = () => {
+            wrapper.remove();
+            imageDataArray = imageDataArray.filter(i => i.data !== imgData);
+          };
+
+          wrapper.appendChild(img);
+          wrapper.appendChild(removeBtn);
+          preview.appendChild(wrapper);
+
+          imageDataArray.push({ data: imgData, name: file.name });
+
+          addDragAndDrop(wrapper);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function handlePdfUpload(event) {
+      const files = Array.from(event.target.files);
+      dragUsed = false;
+      pdfDataArray = [];
+      const currentImages = [...imageDataArray];
+
+      preview.innerHTML = "";
+      imageDataArray = [];
+
+      files.forEach(file => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "thumb-wrapper";
+        wrapper.dataset.type = "pdf";
+
+        const divPdf = document.createElement("div");
+        divPdf.className = "pdf-thumb";
+        divPdf.textContent = file.name;
+
+        divPdf.setAttribute("draggable", true);
+        divPdf.title = file.name;
+
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "×";
+        removeBtn.className = "remove-btn";
+        removeBtn.onclick = () => {
+          wrapper.remove();
+          pdfDataArray = pdfDataArray.filter(p => p.file !== file);
+        };
+
+        wrapper.appendChild(divPdf);
+        wrapper.appendChild(removeBtn);
+        preview.appendChild(wrapper);
+
+        pdfDataArray.push({ file, name: file.name });
+
+        addDragAndDrop(wrapper);
+      });
+
+      currentImages.forEach(imgObj => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const imgData = e.target.result;
+
+          const wrapper = document.createElement("div");
+          wrapper.className = "thumb-wrapper";
+          wrapper.dataset.type = "image";
+
+          const img = document.createElement("img");
+          img.src = imgData;
+          img.className = "thumb";
+          img.setAttribute("draggable", true);
+          img.alt = imgObj.name;
+
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.className = "remove-btn";
+          removeBtn.onclick = () => {
+            wrapper.remove();
+            imageDataArray = imageDataArray.filter(i => i.data !== imgData);
+          };
+
+          wrapper.appendChild(img);
+          wrapper.appendChild(removeBtn);
+          preview.appendChild(wrapper);
+
+          imageDataArray.push({ data: imgData, name: imgObj.name });
+
+          addDragAndDrop(wrapper);
+        };
+        reader.readAsDataURL(dataURLtoFile(imgObj.data, imgObj.name));
+      });
+    }
+
+    function dataURLtoFile(dataurl, filename) {
+      let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+          bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+      while(n--){
+          u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new File([u8arr], filename, {type:mime});
+    }
+
+    function addDragAndDrop(element) {
+      element.addEventListener("dragstart", (e) => {
+        dragUsed = true;
+        element.classList.add("dragging");
+        e.dataTransfer.setData("text/plain", "");
+        element.dragSrcEl = element;
+      });
+
+      element.addEventListener("dragend", () => {
+        element.classList.remove("dragging");
+      });
+
+      element.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        const dragging = document.querySelector(".dragging");
+        if (!dragging || dragging === element) return;
+
+        const previewChildren = Array.from(preview.children);
+        const draggingIndex = previewChildren.indexOf(dragging);
+        const targetIndex = previewChildren.indexOf(element);
+
+        if (draggingIndex < targetIndex) {
+          preview.insertBefore(dragging, element.nextSibling);
+        } else {
+          preview.insertBefore(dragging, element);
+        }
+
+        const newImageArray = [];
+        const newPdfArray = [];
+        previewChildren.forEach(div => {
+          const type = div.dataset.type;
+          if(type === "image"){
+            const img = div.querySelector("img");
+            if(img) newImageArray.push({ data: img.src, name: img.alt || "" });
+          } else if(type === "pdf"){
+            const pdfName = div.querySelector(".pdf-thumb").textContent;
+            const pdfObj = pdfDataArray.find(p => p.name === pdfName);
+            if(pdfObj) newPdfArray.push(pdfObj);
+          }
+        });
+        imageDataArray = newImageArray;
+        pdfDataArray = newPdfArray;
+      });
+    }
+
+    async function processImage(imgData) {
+      const img = new Image();
+      img.src = imgData;
+      await img.decode();
+
+      const canvas = document.createElement("canvas");
+      const MAX_WIDTH = 1080;
+      const scale = Math.min(1, MAX_WIDTH / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.8);
+    }
+
+    const progressContainer = document.getElementById("progress-container");
+    const progressBar = document.getElementById("progress-bar");
+
+    function showProgress() {
+      progressContainer.style.display = "block";
+      progressBar.style.width = "0%";
+    }
+
+    function updateProgress(percent) {
+      progressBar.style.width = percent + "%";
+    }
+
+    function hideProgress() {
+      progressContainer.style.display = "none";
+      progressBar.style.width = "0%";
+    }
+
+    function getAutoLayout(imageCount) {
+      // Usa 2x3 se o número de imagens for 6 ou menos, ou um múltiplo de 6
+      if (imageCount <= 6 || imageCount % 6 === 0) {
+        return "2x3";
+      }
+      // Caso contrário, usa 2x4
+      return "2x4";
+    }
+
+    async function generateImagesPDF(imageElements, options) {
+      const { title, compress, layout } = options;
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 10;
+      const headerHeight = title ? 15 : 0;
+
+      let cols = 2, rows = 3, imageWidth = 90, imageHeight = 70;
+
+      if (layout === "2x4") {
+        cols = 2;
+        rows = 4;
+        imageWidth = 86;
+        imageHeight = 63;
+      }
+
+      if (layout === "1x2") {
+        cols = 1;
+        rows = 2;
+        imageWidth = 180;
+        imageHeight = 120;
+      }
+      const spacingX = (pageWidth - cols * imageWidth) / (cols + 1);
+      const spacingY = 5;
+      const imagesPerPage = cols * rows;
+
+      for (let page = 0; page < Math.ceil(imageElements.length / imagesPerPage); page++) {
+        if (page > 0) pdf.addPage();
+
+        if (title) {
+          pdf.setFillColor(200, 200, 200);
+          pdf.rect(0, 0, pageWidth, headerHeight, "F");
+          pdf.setFont("helvetica", "italic");
+          pdf.setFontSize(14);
+          pdf.setTextColor(0);
+          pdf.text(title, margin, 10);
+        }
+
+        for (let i = 0; i < imagesPerPage; i++) {
+          const index = page * imagesPerPage + i;
+          if (index >= imageElements.length) break;
+
+          let imgData = imageElements[index];
+          if (compress) imgData = await processImage(imgData);
+
+          const row = Math.floor(i / cols);
+          const col = i % cols;
+          const x = spacingX + col * (imageWidth + spacingX);
+          const y = headerHeight + spacingY + row * (imageHeight + spacingY);
+
+          pdf.addImage(imgData, "JPEG", x, y, imageWidth, imageHeight);
+        }
+
+        pdf.setFont("helvetica", "italic");
+        pdf.setFontSize(8);
+        pdf.setTextColor(100);
+        pdf.text(`Página ${page + 1}`, pageWidth - margin, pageHeight - 5, { align: "right" });
+      }
+
+      return pdf.output("arraybuffer");
+    }
+
+    async function mergePDFs(laudoFilesBuffers, imagesPDFBuffer) {
+      const mergedPdf = await PDFDocument.create();
+
+      for (const buf of laudoFilesBuffers) {
+        const laudoPdf = await PDFDocument.load(buf);
+        const copiedPages = await mergedPdf.copyPages(laudoPdf, laudoPdf.getPageIndices());
+        copiedPages.forEach(page => mergedPdf.addPage(page));
+      }
+
+      const imagesPdf = await PDFDocument.load(imagesPDFBuffer);
+      const copiedImagePages = await mergedPdf.copyPages(imagesPdf, imagesPdf.getPageIndices());
+      copiedImagePages.forEach(page => mergedPdf.addPage(page));
+
+      return await mergedPdf.save();
+    }
+
+    function readFileAsArrayBuffer(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = e => reject(e);
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function generateSinglePDF() {
+      if (imageDataArray.length === 0 && pdfDataArray.length === 0) {
+        alert("Por favor, selecione pelo menos uma imagem ou um laudo PDF.");
+        return;
+      }
+      let title = document.getElementById("titleInput").value.trim();
+      const compress = document.getElementById("compressImages").checked;
+      let layout = document.getElementById("layout").value;
+      const includePatientName = document.getElementById("includePatientName").checked;
+
+      if (!dragUsed) {
+        imageDataArray.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));
+        pdfDataArray.sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      if (includePatientName && imageDataArray.length > 0) {
+        const patientName = imageDataArray[0].name.split('.')[0];
+        title = title ? `${title} - ${patientName}` : patientName;
+      }
+
+      if (layout === "auto") {
+        layout = getAutoLayout(imageDataArray.length);
+      }
+
+      const imagesBase64 = imageDataArray.map(obj => obj.data);
+      const imagesPDFBuffer = await generateImagesPDF(imagesBase64, { title, compress, layout });
+      const laudoBuffers = await Promise.all(pdfDataArray.map(p => readFileAsArrayBuffer(p.file)));
+
+      let finalPdfBytes;
+      if (laudoBuffers.length > 0) {
+        finalPdfBytes = await mergePDFs(laudoBuffers, imagesPDFBuffer);
+      } else {
+        finalPdfBytes = imagesPDFBuffer;
+      }
+
+      const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "laudo_completo.pdf";
+      a.click();
+    }
+
+    async function generateMultiplePDFs() {
+      const files = Array.from(multiUpload.files);
+      if (files.length === 0) {
+        alert("Por favor, selecione pelo menos uma pasta com imagens.");
+        return;
+      }
+
+      showProgress();
+
+      const grouped = {};
+      for (const file of files) {
+        const parts = file.webkitRelativePath.split("/");
+        const folderName = parts.length > 1 ? parts[1] : parts[0];
+        if (!grouped[folderName]) grouped[folderName] = { images: [], pdfs: [] };
+
+        if (file.name.toLowerCase().endsWith(".pdf")) {
+          grouped[folderName].pdfs.push(file);
+        } else if (file.type.startsWith("image/")) {
+          grouped[folderName].images.push(file);
+        }
+      }
+
+      const folderNames = Object.keys(grouped);
+      const mergePdfs = document.getElementById("mergePdfs").checked;
+      const includePatientName = document.getElementById("includePatientName").checked;
+      const baseTitle = document.getElementById("titleInput").value.trim();
+      const baseLayout = document.getElementById("layout").value;
+
+      if (mergePdfs) {
+        const mergedPdf = await PDFDocument.create();
+
+        for (let i = 0; i < folderNames.length; i++) {
+          const folder = folderNames[i];
+          const { images: imgsFiles, pdfs: pdfFiles } = grouped[folder];
+
+          imgsFiles.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));
+
+          const loadImagePromises = imgsFiles.map(file => new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.readAsDataURL(file);
+          }));
+          const loadedImagesBase64 = await Promise.all(loadImagePromises);
+
+          pdfFiles.sort((a, b) => a.name.localeCompare(b.name));
+
+          const laudoBuffers = await Promise.all(pdfFiles.map(f => readFileAsArrayBuffer(f)));
+
+          let title = baseTitle || folder;
+          if (includePatientName) {
+            title = baseTitle ? `${baseTitle} - ${folder}` : folder;
+          }
+
+          const compress = document.getElementById("compressImages").checked;
+          const layout = baseLayout === "auto" ? getAutoLayout(imgsFiles.length) : baseLayout;
+
+          const imagesPDFBuffer = await generateImagesPDF(loadedImagesBase64, { title, compress, layout });
+
+          const folderPdf = await PDFDocument.create();
+          for (const buf of laudoBuffers) {
+            const laudoPdf = await PDFDocument.load(buf);
+            const copiedPages = await folderPdf.copyPages(laudoPdf, laudoPdf.getPageIndices());
+            copiedPages.forEach(page => folderPdf.addPage(page));
+          }
+          const imagesPdf = await PDFDocument.load(imagesPDFBuffer);
+          const copiedImagePages = await folderPdf.copyPages(imagesPdf, imagesPdf.getPageIndices());
+          copiedImagePages.forEach(page => folderPdf.addPage(page));
+
+          const folderPages = await mergedPdf.copyPages(folderPdf, folderPdf.getPageIndices());
+          folderPages.forEach(page => mergedPdf.addPage(page));
+
+          updateProgress(((i + 1) / folderNames.length) * 100);
+        }
+
+        const finalPdfBytes = await mergedPdf.save();
+        const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "laudos_combinados.pdf";
+        a.click();
+
+        setTimeout(() => {
+          hideProgress();
+        }, 500);
+      } else {
+        const zip = new JSZip();
+        for (let i = 0; i < folderNames.length; i++) {
+          const folder = folderNames[i];
+          const { images: imgsFiles, pdfs: pdfFiles } = grouped[folder];
+
+          imgsFiles.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));
+
+          const loadImagePromises = imgsFiles.map(file => new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.readAsDataURL(file);
+          }));
+          const loadedImagesBase64 = await Promise.all(loadImagePromises);
+
+          pdfFiles.sort((a, b) => a.name.localeCompare(b.name));
+
+          const laudoBuffers = await Promise.all(pdfFiles.map(f => readFileAsArrayBuffer(f)));
+
+          let title = baseTitle || folder;
+          if (includePatientName) {
+            title = baseTitle ? `${baseTitle} - ${folder}` : folder;
+          }
+
+          const compress = document.getElementById("compressImages").checked;
+          const layout = baseLayout === "auto" ? getAutoLayout(imgsFiles.length) : baseLayout;
+
+          const imagesPDFBuffer = await generateImagesPDF(loadedImagesBase64, { title, compress, layout });
+
+          const mergedPdfBytes = await mergePDFs(laudoBuffers, imagesPDFBuffer);
+
+          zip.file(folder + ".pdf", mergedPdfBytes);
+
+          updateProgress(((i + 1) / folderNames.length) * 100);
+        }
+
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "laudos_pastas.zip";
+        a.click();
+
+        setTimeout(() => {
+          hideProgress();
+        }, 500);
+      }
+    }
+
+    function handleGenerate() {
+      if (modeSelector.value === "single") {
+        generateSinglePDF();
+      } else {
+        generateMultiplePDFs();
+      }
+    }
+  </script>
+</body>
+</html>
